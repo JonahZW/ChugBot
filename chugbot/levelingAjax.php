@@ -355,8 +355,21 @@ if (isset($_POST["matches_and_prefs"])) {
             $edahIdOrText .= " OR e.edah_id = ?";
         }
     }
-    $edahIdOrText .= ")";
-    $sql .= $edahIdOrText;
+    $edahIdOrText .= ") ";
+    $sql .= $edahIdOrText . "AND ";
+
+    $groupIdOrText = "";
+    foreach ($group_ids as $group_id) {
+        $db->addColVal($group_id, 'i');
+        if (empty($groupIdOrText)) {
+            $groupIdOrText .= "(c.group_id = ?";
+        } else {
+            $groupIdOrText .= " OR c.group_id = ?";
+        }
+    }
+    $groupIdOrText .= ")";
+    $sql .= $groupIdOrText;
+
     $sql .= " GROUP BY chugid, edahid";
     $result = $db->doQuery($sql, $err);
     if ($result == false) {
@@ -394,9 +407,12 @@ if (isset($_POST["matches_and_prefs"])) {
     foreach ($edah_ids as $edah_id) {
         $db->addColVal($edah_id, 'i');
     }
+    foreach ($group_ids as $group_id) {
+        $db->addColVal($group_id, 'i');
+    }
     $result = $db->doQuery("SELECT e.chug_id, e.edah_id, c.group_id FROM edot_for_chug e " . 
     "JOIN chugim c ON c.chug_id = e.chug_id JOIN chug_instances ci ON c.chug_id = ci.chug_id " . 
-    "WHERE ci.block_id = ? AND $edahIdOrText ORDER BY c.name", $err);
+    "WHERE ci.block_id = ? AND $edahIdOrText AND $groupIdOrText ORDER BY c.name", $err);
     if ($result == false) {
         error_log("Allowed chugim query failed: $err");
         header('HTTP/1.1 500 Internal Server Error');
