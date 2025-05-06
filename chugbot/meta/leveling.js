@@ -438,7 +438,11 @@ function getAndDisplayCurrentMatches() {
 						chugId2FreeSpace[chugId] = chugMax - curCount;
 					}
 					var colorClass = getColorForCount(curCount, chugMin, chugMax);
-					htmlChug = "<div id=\"chugholder_" + chugId + "\" name=\"" + chugId + "\" class=\"ui-widget ui-helper-clearfix chugholder card-body bg-white border rounded mb-3 pb-0 ui-droppable\">\n";
+					var useGroupId = "";
+					if (chugId == -1) {
+						useGroupId = "_" + groupId; 
+					}
+					htmlChug = "<div id=\"chugholder_" + chugId + useGroupId + "\" name=\"" + chugId + "\" class=\"ui-widget ui-helper-clearfix chugholder card-body bg-white border rounded mb-3 pb-0 ui-droppable\">\n";
 					if (chugName == "Not Assigned Yet") {
 						htmlChug += "<h4><font color=\"red\">" + chugName + "</font></h4>";
 					} else {
@@ -585,13 +589,16 @@ function getAndDisplayCurrentMatches() {
 				// just re-use the code here
 				let newChugId = $(this).attr("data-chug-id");
 				let camperId = $(this).attr("camper-id");
-		
+				var groupId = $(targetElement).parent().parent().parent().parent().attr("name");
+
+				if (newChugId == -1) {
+					newChugId = "-1_"+groupId
+				}
 				var droppedOn = document.getElementById("chugholder_"+newChugId).getElementsByClassName('row')[0];
 				var droppedChugId = newChugId;
 				var dropped = targetElement;
 				// Change the color of the dropped item according to the camper's
 				// preference for the dropped-on chug.
-				var groupId = $(dropped).parent().parent().parent().parent().attr("name");
 				var chugId2MatchedCampers = groupId2ChugId2MatchedCampers[groupId];
 				var prefClass = prefClasses[prefClasses.length - 1];
 				if (camperId in camperId2Group2PrefList) {

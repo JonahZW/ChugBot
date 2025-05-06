@@ -548,11 +548,9 @@ if (isset($_POST["matches_and_prefs"])) {
             error_log("No match found for $unAssignedName for $group_name - flagging as unassigned");
             array_push($groupId2ChugId2MatchedCampers[$group_id][$unAssignedIndex], $unAssignedId);
         }
-        if (count($groupId2ChugId2MatchedCampers[$group_id][$unAssignedIndex]) == 0 ||
-            count($groupId2ChugId2MatchedCampers[$group_id]) == 1) {
-            // Do not display unassigned campers if:
-            // a) We don't have any, or
-            // b) There were no available chugim.
+        if (count($groupId2ChugId2MatchedCampers[$group_id]) == 1) {
+            // Do not display unassigned campers if there were no available chugim for the group.
+            // We still want the option to unassign campers, even if all are assigned
             unset($groupId2ChugId2MatchedCampers[$group_id][$unAssignedIndex]);
         }
     }
