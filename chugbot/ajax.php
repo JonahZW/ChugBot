@@ -339,7 +339,7 @@ END;
         }
         $row = $result->fetch_assoc();
         $mailError = "";
-        $subject = "Camp Ramah " . chug_term_singular . " preferences for $first $last";
+        $subject = ucfirst(chug_term_singular) . " preferences confirmed for $first $last";
         $sentOk = sendMail($email, $subject, $email_text, $row, $mailError, true);
         if ($email2) {
             $sentOk = $sentOk && sendMail($email2, $subject, $email_text, $row, $mailError, true);
