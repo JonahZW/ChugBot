@@ -450,7 +450,8 @@ function genPickList($id2Name, $selectedMap, $name, $defaultMessage = null)
         & $name != "block" && !strstr($name, "edot_for") & $name != block_term_singular
         & $name != "session" && !strstr($name, "edot_for")
         & $name != "group" && !strstr($name, "edot_for")
-        & $name != "edah Group") {
+        & $name != "edah Group"
+        & $name != "shirt Size") {
         asort($id2Name);
     }
     foreach ($id2Name as $id => $name) {

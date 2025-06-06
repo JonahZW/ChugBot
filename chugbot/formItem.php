@@ -96,8 +96,8 @@ class FormItemCheckBox extends FormItem
         if (!$this->staffOnlyOk()) {
             return;
         }
-        $this->html = "<div>\n";
-        $this->html .= "<li id=\"li_$this->liNum\">\n";
+        $this->html = "<li id=\"li_$this->liNum\">\n";
+        $this->html .= "<div class=\"form-check form-switch\">\n";
         $this->html .= "<label class=\"description\" for=\"$this->inputName\">";
         if ($this->required) {
             $this->html .= "<font color=\"red\">*</font>";
@@ -111,11 +111,11 @@ class FormItemCheckBox extends FormItem
         if ($this->error) {
             $this->html .= "<span class=\"error\">$this->error</span>\n";
         }
-        $this->html .= "</div>";
         if ($this->guideText) {
             $guideId = "guide_" . $this->liNum;
             $this->html .= "<p class=\"guidelines\" id=\"$guideId\"><small>$this->guideText</small></p>\n";
         }
+        $this->html .= "</div>";
         $this->html .= "</li>\n";
 
         return $this->html;

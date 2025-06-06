@@ -30,6 +30,7 @@ $editCamperPage->addColumn("email2", false, false);
 $editCamperPage->addColumn("session_id", true, true);
 $editCamperPage->addColumn("edah_id", true, true);
 $editCamperPage->addColumn("bunk_id", false, true);
+$editCamperPage->addColumn("shirt_size", false, false);
 $editCamperPage->addColumn("needs_first_choice", false, true, 0);
 $editCamperPage->addColumn("inactive", false, true, 0);
 if ($enableSelectionProcess) {
@@ -108,17 +109,27 @@ $bunkDropDown->setParentIdAndName("edah_id", "Edah");
 $bunkDropDown->setColVal($bunkIdVal);
 $editCamperPage->addFormItem($bunkDropDown);
 
+$shirtVal = $editCamperPage->columnValue("shirt_size"); // May be NULL
+$shirtDropDown = new FormItemDropDown("Shirt Size", false, "shirt_size", 7);
+$shirtDropDown->setGuideText("Choose your shirt size!");
+$shirtDropDown->setInputSingular("shirt Size");
+$shirtDropDown->setInputClass("element medium");
+$shirtDropDown->setColVal($shirtVal);
+$shirtSizes = array('YXS'=>'YXS', 'YS'=>'YS', 'YM'=>'YM', 'YL'=>'YL', 'YXL'=>'YXL', 'XS'=>'XS', 'S'=>'S', 'M'=>'M', 'L'=>'L', 'XL'=>'XL', '2XL'=>'2XL', '3XL'=>'3XL', '4XL'=>'4XL');
+$shirtDropDown->setId2Name($shirtSizes);
+$editCamperPage->addFormItem($shirtDropDown);
+
 // Add two fields that are only visible to staff.  These apply only to the edit page, not the add
 // page.
 $needsFirstChoiceVal = $editCamperPage->columnValue("needs_first_choice");
-$needsFirstChoiceBox = new FormItemCheckBox("Needs first choice", false, "needs_first_choice", 7);
+$needsFirstChoiceBox = new FormItemCheckBox("Needs first choice", false, "needs_first_choice", 8);
 $needsFirstChoiceBox->setGuideText("Check this box if this camper should always get their first choice " . chug_term_singular . ".");
 $needsFirstChoiceBox->setStaffOnly(true);
 $needsFirstChoiceBox->setInputValue($needsFirstChoiceVal);
 $editCamperPage->addFormItem($needsFirstChoiceBox);
 
 $inactiveVal = $editCamperPage->columnValue("inactive");
-$inactiveBox = new FormItemCheckBox("Inactive", false, "inactive", 8);
+$inactiveBox = new FormItemCheckBox("Inactive", false, "inactive", 9);
 $inactiveBox->setGuideText("If you check this box, this camper will not be assigned.");
 $inactiveBox->setStaffOnly(true);
 $inactiveBox->setInputValue($inactiveVal);

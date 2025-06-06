@@ -273,13 +273,15 @@ CREATE TABLE `campers` (
   `needs_first_choice` tinyint(1) DEFAULT '0',
   `inactive` tinyint(1) NOT NULL DEFAULT '0',
   `email2` varchar(50) COLLATE utf8mb3_unicode_ci DEFAULT NULL,
+  `shirt_size` varchar(3) COLLATE utf8mb3_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`camper_id`),
   KEY `fk_edah_id` (`edah_id`),
   KEY `fk_session_id` (`session_id`),
   KEY `fk_bunk_id` (`bunk_id`),
   CONSTRAINT `campers_ibfk_1` FOREIGN KEY (`edah_id`) REFERENCES `edot` (`edah_id`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `campers_ibfk_2` FOREIGN KEY (`session_id`) REFERENCES `sessions` (`session_id`) ON DELETE SET NULL ON UPDATE CASCADE,
-  CONSTRAINT `campers_ibfk_3` FOREIGN KEY (`bunk_id`) REFERENCES `bunks` (`bunk_id`) ON DELETE SET NULL ON UPDATE CASCADE
+  CONSTRAINT `campers_ibfk_3` FOREIGN KEY (`bunk_id`) REFERENCES `bunks` (`bunk_id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `chk_shirt_size` CHECK (`shirt_size` IN ('YXS', 'YS', 'YM', 'YL', 'YXL', 'XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL')) 
 ) ENGINE=InnoDB AUTO_INCREMENT=1361 DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 

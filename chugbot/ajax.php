@@ -179,10 +179,17 @@ if (isset($_POST["submit_prefs"])) {
             $bunkIdVal = intval($_SESSION["bunk_id"]);
         }
         $db->addColumn("bunk_id", $bunkIdVal, 'i');
+        if (isset($_SESSION["shirt_size"])) {
+            $db->addColumn("shirt_size", $_SESSION["shirt_size"], 's');
+        }
         if (!$db->insertIntoTable("campers", $err)) {
             header('HTTP/1.1 500 Internal Server Error');
             die(json_encode(array("error" => $err)));
         }
+        // Unset all optional columns -- otherwise, leaving those columns blank will default back to previous submissions
+        unset($_SESSION["email2"]);
+        unset($_SESSION["shirt_size"]);
+        unset($_SESSION["bunk_id"]);
         // Grab the newly-created camper ID, for use below, and set it.
         $camper_id = $db->insertId();
         $_SESSION["camper_id"] = $camper_id;

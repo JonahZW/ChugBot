@@ -6,7 +6,8 @@ bounceToLogin();
 checkLogout();
 setup_camp_specific_terminology_constants();
 
-$fields = array(edah_term_singular, "session", "first_name", "last_name", "bunk", "email", "email2", "needs_first_choice");
+$fields = array(edah_term_singular, "session", "first_name", "last_name", "bunk", "email", "email2", "shirt_size", "needs_first_choice");
+$shirtSizes = array('YXS', 'YS', 'YM', 'YL', 'YXL', 'XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL');
 
 // ensure camper importer is enabled
 $enableCamperImporter = check_enabled("enable_camper_importer");
@@ -66,7 +67,7 @@ foreach ($parts as $part) {
             $firstPref = null;
             if ($count % 4 == 0) {$firstPref = true;}
             // add sample camper to the output CSV
-            fputcsv($f, array($row['edah'], $row['session'], "First $count", "Last $count", $row['bunk'], "example@example.com", null, $firstPref), ",");
+            fputcsv($f, array($row['edah'], $row['session'], "First $count", "Last $count", $row['bunk'], "example@example.com", null, $shirtSizes[$count % sizeof($shirtSizes)], $firstPref), ",");
             $count++;
         }
         exit();
@@ -140,6 +141,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && !empty($_FILES["csv"]["tmp_name"])) 
         $edahId = null;
         $sessionId = null;
         $bunkId = null;
+        $shirt = null;
+        $error = null;
         if (array_key_exists($camper[edah_term_singular], $edah_name_to_id)) {
             $edahId = $edah_name_to_id[$camper[edah_term_singular]];
         } else {
@@ -155,15 +158,22 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && !empty($_FILES["csv"]["tmp_name"])) 
         } else {
             $error = "invalid bunk: '" . $camper["bunk"] . "'";
         }
+        if (in_array($camper["shirt_size"], $shirtSizes)) {
+            $shirt = $camper["shirt_size"];
+        } else if ($camper["shirt_size"] == "") {
+            $shirt = null;
+        } else {
+            $error = "invalid shirt: '" . $camper["shirt_size"] . "'";
+        }
         $needsFirstChoice = !empty($camper["needs_first_choice"]);
 
-        if (!$edahId || !$sessionId || !$bunkId) {
+        if ($error) {
             array_push($campersWithErrors, $camper["first_name"] . " " . $camper["last_name"] . " ($error)");
             continue;
         }
 
-        $stmt = $dbConn->mysqliClient()->prepare("INSERT INTO campers(edah_id, session_id, first, last, bunk_id, email, email2, needs_first_choice) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("sssssssi", $edahId, $sessionId, $camper["first_name"], $camper["last_name"], $bunkId, $camper["email"], $camper["email2"], $needsFirstChoice);
+        $stmt = $dbConn->mysqliClient()->prepare("INSERT INTO campers(edah_id, session_id, first, last, bunk_id, email, email2, shirt_size, needs_first_choice) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("ssssssssi", $edahId, $sessionId, $camper["first_name"], $camper["last_name"], $bunkId, $camper["email"], $camper["email2"], $shirt, $needsFirstChoice);
         $stmt->execute();
     }
 
@@ -223,6 +233,12 @@ $detailAccordion->addAccordionElement($id="Session", $title=$elementTitle, $body
 $elementTitle = "Valid values for&nbsp<b>bunk</b>";
 $elementBody = "<ul style=\"column-count: 3; column-gap:20px;\" class=\"mb-0\"><li>" . implode("</li><li>", array_keys($bunk_name_to_id)) . "</li></ul>";
 $detailAccordion->addAccordionElement($id="BlockEdah", $title=$elementTitle, $body=$elementBody, $open=false);
+
+// shirt_size
+$elementTitle = "Valid values for&nbsp<b>shirt_size</b>";
+$elementBody = "<code>shirt_size</code> does not need entries, but the column must exist. It can be left blank if no shirt sizes are being uploaded, or the following choices may be entered verbatim:";
+$elementBody .= "<ul style=\"column-count: 3; column-gap:20px;\" class=\"mb-0\"><li>" . implode("</li><li>", $shirtSizes) . "</li></ul>";
+$detailAccordion->addAccordionElement($id="ShirtSize", $title=$elementTitle, $body=$elementBody, $open=false);
 
 // all else
 $elementTitle = "Other details";
