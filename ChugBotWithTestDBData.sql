@@ -139,11 +139,13 @@ CREATE TABLE `attendance_block_by_date` (
   `date` date NOT NULL,
   `group_id` int NOT NULL,
   `block_id` int NOT NULL,
+  `edah_group_id` int,
   `attendance_block_by_date_id` int NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (`attendance_block_by_date_id`),
-  UNIQUE KEY `uk_attendance_block_by_date` (`date`,`group_id`),
+  UNIQUE KEY `uk_attendance_block_by_date` (`date`,`group_id`, `edah_group_id`),
   CONSTRAINT `attendance_block_by_date_ibfk_1` FOREIGN KEY (`group_id`) REFERENCES `chug_groups` (`group_id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `attendance_block_by_date_ibfk_2` FOREIGN KEY (`block_id`) REFERENCES `blocks` (`block_id`) ON DELETE CASCADE ON UPDATE CASCADE
+  CONSTRAINT `attendance_block_by_date_ibfk_2` FOREIGN KEY (`block_id`) REFERENCES `blocks` (`block_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `attendance_block_by_date_ibfk_3` FOREIGN KEY (`edah_group_id`) REFERENCES `edah_groups` (`edah_group_id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -312,7 +314,7 @@ CREATE TABLE `category_tables` (
 
 LOCK TABLES `category_tables` WRITE;
 /*!40000 ALTER TABLE `category_tables` DISABLE KEYS */;
-INSERT INTO `category_tables` VALUES ('blocks',1,0),('bunks',2,1),('campers',3,1),('chugim',4,1),('edot',5,1),('chug_groups',6,0),('sessions',7,1);
+INSERT INTO `category_tables` VALUES ('blocks',1,0),('bunks',2,1),('campers',3,1),('chugim',4,1),('edot',5,1),('chug_groups',6,0),('sessions',7,1),('edah_groups',8,1);
 /*!40000 ALTER TABLE `category_tables` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -354,11 +356,9 @@ DROP TABLE IF EXISTS `chug_groups`;
 CREATE TABLE `chug_groups` (
   `group_id` int NOT NULL AUTO_INCREMENT,
   `name` varchar(50) CHARACTER SET utf8mb3 COLLATE utf8mb3_unicode_ci NOT NULL,
-  `active_block_id` int,
   `sort_order` int NOT NULL DEFAULT '0',
   PRIMARY KEY (`group_id`),
-  UNIQUE KEY `uk_groups` (`name`),
-  CONSTRAINT `chug_groups_ibfk_1` FOREIGN KEY (`active_block_id`) REFERENCES `blocks` (`block_id`) ON DELETE SET NULL ON UPDATE CASCADE
+  UNIQUE KEY `uk_groups` (`name`)
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -368,7 +368,7 @@ CREATE TABLE `chug_groups` (
 
 LOCK TABLES `chug_groups` WRITE;
 /*!40000 ALTER TABLE `chug_groups` DISABLE KEYS */;
-INSERT INTO `chug_groups` VALUES (1,'Chug Aleph',1,1),(2,'Chug Bet',1,2),(4,'Chug Dalet',1,4),(3,'Chug Gimel',1,3);
+INSERT INTO `chug_groups` VALUES (1,'Chug Aleph',1),(2,'Chug Bet',2),(4,'Chug Dalet',4),(3,'Chug Gimel',3);
 /*!40000 ALTER TABLE `chug_groups` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -435,6 +435,31 @@ INSERT INTO `chugim` VALUES ("Soccer",1,18,6,"Learn the basic skills and techniq
 UNLOCK TABLES;
 
 --
+-- Table structure for table `edah_groups`
+--
+
+DROP TABLE IF EXISTS `edah_groups`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `edah_groups` (
+  `edah_group_id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(50) CHARACTER SET utf8mb3 COLLATE utf8mb3_unicode_ci NOT NULL,
+  `sort_order` int NOT NULL DEFAULT '0',
+  PRIMARY KEY (`edah_group_id`),
+  UNIQUE KEY `uk_edah_groups` (`name`));
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `edah_groups`
+--
+
+LOCK TABLES `edah_groups` WRITE;
+/*!40000 ALTER TABLE `edah_groups` DISABLE KEYS */;
+INSERT INTO `edah_groups` VALUES (1,'Shorashim + Anafim',1),(2,'Garinim + Etzim',2),(3,'Nitzanim',3);
+/*!40000 ALTER TABLE `edah_groups` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `edot`
 --
 
@@ -444,12 +469,14 @@ DROP TABLE IF EXISTS `edot`;
 CREATE TABLE `edot` (
   `edah_id` int NOT NULL AUTO_INCREMENT,
   `name` varchar(50) CHARACTER SET utf8mb3 COLLATE utf8mb3_unicode_ci NOT NULL,
+  `edah_group_id` int,
   `rosh_name` varchar(100) CHARACTER SET utf8mb3 COLLATE utf8mb3_unicode_ci DEFAULT '',
   `rosh_phone` varchar(20) CHARACTER SET utf8mb3 COLLATE utf8mb3_unicode_ci DEFAULT '',
   `comments` varchar(512) CHARACTER SET utf8mb3 COLLATE utf8mb3_unicode_ci DEFAULT '',
   `sort_order` int NOT NULL DEFAULT '0',
   PRIMARY KEY (`edah_id`),
-  UNIQUE KEY `uk_edot` (`name`)
+  UNIQUE KEY `uk_edot` (`name`),
+  CONSTRAINT edot_ibfk_1 FOREIGN KEY (`edah_group_id`) REFERENCES `edah_groups` (`edah_group_id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -459,7 +486,7 @@ CREATE TABLE `edot` (
 
 LOCK TABLES `edot` WRITE;
 /*!40000 ALTER TABLE `edot` DISABLE KEYS */;
-INSERT INTO `edot` VALUES (1,'Shorashim (entering kindergarten after camp)',NULL,NULL,NULL,1),(2,'Garinim (entering 2nd grade after camp)',NULL,NULL,NULL,3),(3,'Nitzanim (entering 4th-6th grades after camp)',NULL,NULL,NULL,4),(6,'Anafim (entering 1st grade after camp)',NULL,NULL,NULL,2),(8,'Etzim (entering 3rd grade after camp)',NULL,NULL,NULL,3);
+INSERT INTO `edot` VALUES (1,'Shorashim (entering kindergarten after camp)',1,NULL,NULL,NULL,1),(2,'Garinim (entering 2nd grade after camp)',2,NULL,NULL,NULL,3),(3,'Nitzanim (entering 4th-6th grades after camp)',3,NULL,NULL,NULL,4),(6,'Anafim (entering 1st grade after camp)',1,NULL,NULL,NULL,2),(8,'Etzim (entering 3rd grade after camp)',2,NULL,NULL,NULL,3);
 /*!40000 ALTER TABLE `edot` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -527,10 +554,12 @@ DROP TABLE IF EXISTS `edot_for_group`;
 CREATE TABLE `edot_for_group` (
   `group_id` int NOT NULL,
   `edah_id` int NOT NULL,
+  `active_block_id` int,
   PRIMARY KEY (`group_id`,`edah_id`),
   KEY `fk_edah_id` (`edah_id`),
   CONSTRAINT `edot_for_group_ibfk_1` FOREIGN KEY (`group_id`) REFERENCES `chug_groups` (`group_id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `edot_for_group_ibfk_2` FOREIGN KEY (`edah_id`) REFERENCES `edot` (`edah_id`) ON DELETE CASCADE ON UPDATE CASCADE
+  CONSTRAINT `edot_for_group_ibfk_2` FOREIGN KEY (`edah_id`) REFERENCES `edot` (`edah_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `edot_for_group_ibfk_3` FOREIGN KEY (`active_block_id`) REFERENCES `blocks` (`block_id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -540,7 +569,7 @@ CREATE TABLE `edot_for_group` (
 
 LOCK TABLES `edot_for_group` WRITE;
 /*!40000 ALTER TABLE `edot_for_group` DISABLE KEYS */;
-INSERT INTO `edot_for_group` VALUES (1,1),(2,1),(3,1),(4,1),(1,2),(2,2),(3,2),(4,2),(1,3),(2,3),(3,3),(4,3),(1,6),(2,6),(3,6),(4,6),(1,8),(2,8),(3,8),(4,8);
+INSERT INTO `edot_for_group` VALUES (1,1,1),(2,1,1),(3,1,1),(4,1,1),(1,2,1),(2,2,1),(3,2,1),(4,2,1),(1,3,1),(2,3,1),(3,3,1),(4,3,1),(1,6,1),(2,6,1),(3,6,1),(4,6,1),(1,8,1),(2,8,1),(3,8,1),(4,8,1);
 /*!40000 ALTER TABLE `edot_for_group` ENABLE KEYS */;
 UNLOCK TABLES;
 

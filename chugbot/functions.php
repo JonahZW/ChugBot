@@ -265,12 +265,21 @@ function genPickListForm($id2Name, $name, $tableName, $editSort = false, $method
     } else if ($tableName == 'edot') {
         $ucPlural = ucfirst(edah_term_plural);
         $ucName = ucfirst(edah_term_singular);
+    } else if ($tableName == 'edah_groups') {
+        $ucPlural = ucfirst(edah_term_singular) . ' Groups';
+        $ucName = ucfirst(edah_term_singular) . ' Group';
+    }
+
+    $editUrl = urlIfy("edit" . ucfirst($name) . ".php");
+    $addUrl = urlIfy("add" . ucfirst($name) . ".php");
+
+    if ($name == "edahGroup") {
+        // format properly for db
+        $name = "edah_group"; 
     }
 
     $formName = "form_" . $name;
     $idCol = $name . "_id";
-    $editUrl = urlIfy("edit" . ucfirst($name) . ".php");
-    $addUrl = urlIfy("add" . ucfirst($name) . ".php");
     $deleteUrl = urlIfy("delete.php?tableName=$tableName&idCol=$idCol");
     $article = "a";
     if (preg_match('/^[aeiou]/i', $name)) {
@@ -440,7 +449,8 @@ function genPickList($id2Name, $selectedMap, $name, $defaultMessage = null)
     if($name != "edah" && !strstr($name, "edot_for") & $name != edah_term_singular
         & $name != "block" && !strstr($name, "edot_for") & $name != block_term_singular
         & $name != "session" && !strstr($name, "edot_for")
-        & $name != "group" && !strstr($name, "edot_for")) {
+        & $name != "group" && !strstr($name, "edot_for")
+        & $name != "edah Group") {
         asort($id2Name);
     }
     foreach ($id2Name as $id => $name) {
@@ -600,7 +610,7 @@ function fillConstraintsPickList() {
         }
         sql += ") AND e.{$type}_id = g.{$type}_id ";
         if("{$type}" == "group" && $("#{$choicesJS}")) {
-            sql += "AND active_block_id IS NOT NULL ";
+            sql += "AND e.active_block_id IS NOT NULL ";
         }
         sql += "GROUP BY e.{$type}_id HAVING COUNT(e.edah_id) = " + ct;
     }
@@ -663,7 +673,7 @@ function fillConstraintsPickList() {
         },
         error: function(xhr, desc, err) {
         console.log(xhr);
-        console.log("Details: " + desc + " Error:" + err);
+        console.log("Details: " + desc + " Error:" + xhr.responseText);
         }
     });
 }
@@ -677,7 +687,7 @@ JS;
     return $javascript;
 }
 
-// Based off of genConstrainedPickListScript (above) to find chugim based on edah, b
+// Based off of genConstrainedPickListScript (above) to find chugim based on edah, block, group
 function genChugimPickListScript($ourId, $parent1, $parent2, $descId, $type, $choicesJS = false) {
     $javascript = <<<JS
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js" integrity="sha384-nvAa0+6Qg9clwYCGGPpDQLVpLNn0fRaROjHqs13t4Ggj3Ez50XnGQqc/r8MhnRDZ" crossorigin="anonymous"></script>
@@ -699,27 +709,32 @@ function fillChugimConstraintsPickList() {
     if(parent2Field.length < 1) { return; } // verifies there is a value present for group; if not, end
     parent2Field = parent2Field[0];
     var instanceIds = [];
-    instanceIds.push(parent2Field.selectedOptions[0].value); // the group_id is used twice in the SQL statement, so added twice to instance id array
-    instanceIds.push(parent2Field.selectedOptions[0].value);
-    for (var option of parent1Field.selectedOptions) { // adds selected edot to instance id array
+    // group_id and edah_id's are both used twice in the SQL statement built below
+    instanceIds.push(parent2Field.selectedOptions[0].value); // group_id
+    for (var option of parent1Field.selectedOptions) {       // edah_ids
+        instanceIds.push(option.value);
+    }
+    instanceIds.push(parent2Field.selectedOptions[0].value); // group_id (2nd time)
+    for (var option of parent1Field.selectedOptions) {       // edah_ids (2nd time)
         instanceIds.push(option.value);
     }
     if(parent1Field.selectedOptions.length < 1) { return; } // ensures 1+ edot are selected before continuing
 
     if("{$type}" == "chug") {
+        // create a list of edot we are considering (which will be used twice in sql statement)
+        var ct = 0;
+        var edot_in = "(";
+        for (var i = 0; i < parent1Field.selectedOptions.length; i++) {
+            if (ct++ > 0) {
+                edot_in += ",";
+            }
+            edot_in += "?";
+        }
+        edot_in += ")";
         // sql statement looks for all chugim which apply to any number of the selected edot for given chug group and active block
         var sql = "SELECT e.chug_id, c.name FROM edot_for_chug e JOIN (SELECT c.chug_id, c.name FROM chug_instances i ";
-        sql += "JOIN chugim c ON i.chug_id = c.chug_id WHERE i.block_id = (SELECT active_block_id FROM chug_groups WHERE group_id = ?) AND c.group_id = ?) c "
-        sql += "ON e.chug_id = c.chug_id WHERE e.edah_id IN(";
-        
-        var ct = 0;
-        for (var i = 2; i < instanceIds.length; i++) {
-            if (ct++ > 0) {
-                sql += ",";
-            }
-            sql += "?";
-        }
-        sql += ") GROUP BY e.chug_id";
+        sql += "JOIN chugim c ON i.chug_id = c.chug_id WHERE i.block_id IN (SELECT active_block_id FROM edot_for_group WHERE group_id = ? AND edah_id IN " + edot_in + ") AND c.group_id = ?) c "
+        sql += "ON e.chug_id = c.chug_id WHERE e.edah_id IN " + edot_in + " GROUP BY e.chug_id";
     }
     values["sql"] = sql;
     values["instance_ids"] = instanceIds;
@@ -769,7 +784,7 @@ function fillChugimConstraintsPickList() {
         },
         error: function(xhr, desc, err) {
         console.log(xhr);
-        console.log("Details: " + desc + " Error:" + err);
+        console.log("Details: " + desc + " Error:" + xhr.responseText);
         }
     });
 }

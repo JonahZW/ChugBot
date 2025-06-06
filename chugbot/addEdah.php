@@ -9,10 +9,10 @@ $addEdahPage = new AddPage("Add " . ucfirst(edah_term_singular),
     "Please enter your " . (edah_term_singular) . " information",
     "edot", "edah_id");
 $addEdahPage->addColumn("name");
+$addEdahPage->addColumn("edah_group_id", false, true);
 $addEdahPage->addColumn("rosh_name", false);
 $addEdahPage->addColumn("rosh_phone", false);
 $addEdahPage->addColumn("comments", false);
-$addEdahPage->addColumn("sort_order", false, true);
 $addEdahPage->handleSubmit();
 
 $nameField = new FormItemSingleTextField(ucfirst(edah_term_singular) . " Name", true, "name", 0);
@@ -23,6 +23,17 @@ $nameField->setInputValue($addEdahPage->columnValue("name"));
 $nameField->setError($addEdahPage->errForColName("name"));
 $nameField->setGuideText("Choose your " . (edah_term_singular) . " name (Kochavim, Ilanot 1, etc.)");
 $addEdahPage->addFormItem($nameField);
+
+$edahGroupIdVal = $addEdahPage->columnValue("edah_group_id"); // May be NULL.
+$edahGroupDropDown = new FormItemDropDown(ucfirst(edah_term_singular) . " Group", false, "edah_group_id", 1);
+$edahGroupDropDown->setGuideText("Optionally, assign this " . edah_term_singular . " to a group");
+$edahGroupDropDown->setError($addEdahPage->errForColName("edah_group_id"));
+$edahGroupDropDown->setInputClass("element form-select medium");
+$edahGroupDropDown->setInputSingular("edah Group");
+$edahGroupDropDown->setColVal($edahGroupIdVal);
+$edahGroupDropDown->fillDropDownId2Name($addEdahPage->dbErr,
+    "edah_group_id", "edah_groups");
+$addEdahPage->addFormItem($edahGroupDropDown);
 
 $roshField = new FormItemSingleTextField("Rosh " . ucfirst(edah_term_singular) . " (head counselor) Name", false, "rosh_name", 1);
 $roshField->setInputType("text");

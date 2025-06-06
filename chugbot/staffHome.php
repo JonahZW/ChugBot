@@ -49,6 +49,7 @@ $sessionId2Name = array();
 $blockId2Name = array();
 $groupId2Name = array();
 $edahId2Name = array();
+$edahGroupId2Name = array();
 $chugId2Name = array();
 $bunkId2Name = array();
 
@@ -60,12 +61,13 @@ if ($_SERVER["REQUEST_METHOD"] = "POST") {
         "edot" => ["edah_id", edah_term_singular],
         "sessions" => ["session_id", "session"],
         "blocks" => ["block_id", block_term_singular],
-        "chug_groups" => ["group_id", chug_term_singular . " group"]
+        "chug_groups" => ["group_id", chug_term_singular . " group"],
+        "edah_groups" => ["edah_group_id", edah_term_singular . " group"]
     );
     // make sure we are instructed to sort, and one of the sortable tables
     if (key_exists("sort", $_POST)) {
         $sort = $_POST["sort"];
-        if($sort == "edot" || $sort == "sessions" || $sort == "blocks" || $sort == "chug_groups") {
+        if($sort == "edot" || $sort == "sessions" || $sort == "blocks" || $sort == "chug_groups" || $sort == "edah_groups") {
             // get list of all ids for the table
             $ids = array();
             $db = new DbConn();
@@ -107,6 +109,8 @@ fillId2Name(null, $groupId2Name, $dbErr,
     "group_id", "chug_groups");
 fillId2Name(null, $edahId2Name, $dbErr,
     "edah_id", "edot");
+fillId2Name(null, $edahGroupId2Name, $dbErr,
+    "edah_group_id", "edah_groups");
 fillId2Name(null, $bunkId2Name, $dbErr,
     "bunk_id", "bunks");
 ?>
@@ -169,6 +173,10 @@ EOM;
     <div class="accordion" id="accordion">
         <div class="accordion-item">
         <?php echo genPickListForm($edahId2Name, "edah", "edot", $editSort = true); ?>
+        </div>
+
+        <div class="accordion-item">
+        <?php echo genPickListForm($edahGroupId2Name, "edahGroup", "edah_groups", $editSort = true); ?>
         </div>
 
         <div class="accordion-item">
