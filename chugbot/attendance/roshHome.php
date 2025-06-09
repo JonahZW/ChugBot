@@ -262,7 +262,7 @@ function attendanceActive() {
     $db = new dbConn();
     $dbErr = "";
     $db->addSelectColumn("count(active_block_id)");
-    $result = $db->simpleSelectFromTable("chug_groups", $dbErr);
+    $result = $db->simpleSelectFromTable("edot_for_group", $dbErr);
     while ($row = mysqli_fetch_array($result, MYSQLI_NUM)) {
         // just gets the count of active blocks
         return $row[0] > 0;

@@ -624,6 +624,9 @@ class EditPage extends AddEditBase
         $addPage = preg_replace('/^edit/', "add", $thisPage);
         $name = preg_replace('/^edit/', "", $thisPage);
         $name = preg_replace('/.php$/', "", $name);
+        if ($name == "EdahGroup") {
+            $name = "Edah Group";
+        }
         $idVal = $this->col2Val[$this->idCol];
         $additionalText = "Please edit below if needed, or return $homeAnchor.";
         if ($this->alternateResultString) {

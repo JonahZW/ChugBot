@@ -32,91 +32,95 @@
         $rawEdahIds = test_input($_GET['edah']);
     }
     $edahIds = [];
+    $edahGroupIds = [];
 
     // additional function (at bottom of code) to ensure everything was properly formatted and valid values
     // were passed in
     validate_form_inputs();
 
-    // update saved attendance
+    // update saved attendance, edah by edah
     if ($_SERVER["REQUEST_METHOD"] == "POST") {
-        // 1: get chug_instance_id (block is known (based on active_block_id, using group_id), chug_id is know)
-        $localErr = "";
-        $dbc = new DbConn();
-        $sql = "SELECT chug_instance_id FROM chug_instances i JOIN chug_groups g ON i.block_id = g.active_block_id WHERE i.chug_id = $chugId and g.group_id = $groupId";
-        $result = $dbc->doQuery($sql, $localErr);
-        if ($result == false) {
-            echo dbErrorString($sql, $localErr);
-            exit();
-        }
-        $chugInstanceId;
-        while ($row = mysqli_fetch_array($result, MYSQLI_NUM)) {
-            $chugInstanceId = $row[0]; // the only thing being returned by this statement is the chug instance id
-        }
-
-        $presentCamperCount = $absentCamperCount = 0;
-        if(test_post_input('absent') != "") {
-            $absentCamperCount = count($_POST['absent']);
-        }
-        if(test_post_input('present') != "") {
-            $presentCamperCount = count($_POST['present']);
-        }
-
-        // 2: build sql statement updating attendance for each camper
-        if($presentCamperCount + $absentCamperCount > 0) {
+        foreach($edahIds as $edahId) {
+            // 1: get chug_instance_id (block is known (based on active_block_id, using edah/group_id via edot_for_group table), chug_id is known)
             $localErr = "";
             $dbc = new DbConn();
-            $sql = "REPLACE INTO attendance (camper_id, date, chug_instance_id, present) VALUES ";
-            $ct = 1;
-            // present campers
-            if($presentCamperCount > 0) {
-                foreach($_POST['present'] as $camper) {
-                    $sql .= "($camper, '$date', $chugInstanceId, 1)";
-                    // add a comma between every value
-                    if($ct++ < $presentCamperCount + $absentCamperCount) {
-                        $sql .= ",";
-                    }
-                }
-            }
-            // absent campers
-            if($absentCamperCount > 0) {
-                foreach($_POST['absent'] as $camper) {
-                    $sql .= "($camper, '$date', $chugInstanceId, 0)";
-                    // add a comma between every value
-                    if($ct++ < $presentCamperCount + $absentCamperCount) {
-                        $sql .= ",";
-                    }
-                }
-            }   
+            $sql = "SELECT chug_instance_id FROM chug_instances i JOIN edot_for_group g ON i.block_id = g.active_block_id WHERE i.chug_id = $chugId AND g.group_id = $groupId AND g.edah_id = $edahId";
             $result = $dbc->doQuery($sql, $localErr);
             if ($result == false) {
                 echo dbErrorString($sql, $localErr);
                 exit();
             }
-        }
-
-        // 3: update date <-> group <-> block relationship in database
-        if($presentCamperCount + $absentCamperCount > 0) {
-            // get active block id for current group
-            $localErr = "";
-            $dbc = new DbConn();
-            $sql = "SELECT active_block_id FROM chug_groups WHERE group_id = $groupId";
-            $result = $dbc->doQuery($sql, $localErr);
-            if ($result == false) {
-                echo dbErrorString($sql, $localErr);
-                exit();
-            }
-            $activeBlockId = NULL;
+            $chugInstanceId;
             while ($row = mysqli_fetch_array($result, MYSQLI_NUM)) {
-                $activeBlockId = $row[0]; // only thing being returned
+                $chugInstanceId = $row[0]; // the only thing being returned by this statement is the chug instance id
             }
-            if($activeBlockId != NULL) {
+
+            $presentCamperCount = $absentCamperCount = 0;
+            if(test_post_input('absent') != "") {
+                $absentCamperCount = count($_POST['absent']);
+            }
+            if(test_post_input('present') != "") {
+                $presentCamperCount = count($_POST['present']);
+            }
+
+            // 2: build sql statement updating attendance for each camper
+            if($presentCamperCount + $absentCamperCount > 0) {
                 $localErr = "";
                 $dbc = new DbConn();
-                $sql = "REPLACE INTO attendance_block_by_date (date, group_id, block_id) VALUES ('$date', $groupId, $activeBlockId)";
+                $sql = "REPLACE INTO attendance (camper_id, date, chug_instance_id, present) VALUES ";
+                $ct = 1;
+                // present campers
+                if($presentCamperCount > 0) {
+                    foreach($_POST['present'] as $camper) {
+                        $sql .= "($camper, '$date', $chugInstanceId, 1)";
+                        // add a comma between every value
+                        if($ct++ < $presentCamperCount + $absentCamperCount) {
+                            $sql .= ",";
+                        }
+                    }
+                }
+                // absent campers
+                if($absentCamperCount > 0) {
+                    foreach($_POST['absent'] as $camper) {
+                        $sql .= "($camper, '$date', $chugInstanceId, 0)";
+                        // add a comma between every value
+                        if($ct++ < $presentCamperCount + $absentCamperCount) {
+                            $sql .= ",";
+                        }
+                    }
+                }   
                 $result = $dbc->doQuery($sql, $localErr);
                 if ($result == false) {
                     echo dbErrorString($sql, $localErr);
                     exit();
+                }
+            }
+
+            // 3: update date <-> group <-> edahGroup <-> block relationship in database
+            if($presentCamperCount + $absentCamperCount > 0) {
+                // get active block id for current group and edah
+                $localErr = "";
+                $dbc = new DbConn();
+                $sql = "SELECT active_block_id FROM edot_for_group WHERE group_id = $groupId and edah_id = $edahId";
+                $result = $dbc->doQuery($sql, $localErr);
+                if ($result == false) {
+                    echo dbErrorString($sql, $localErr);
+                    exit();
+                }
+                $activeBlockId = NULL;
+                while ($row = mysqli_fetch_array($result, MYSQLI_NUM)) {
+                    $activeBlockId = $row[0]; // only thing being returned
+                }
+                if($activeBlockId != NULL) {
+                    $edahGroupId = $edahGroupIds[$edahId]; // looks up the edahGroupId for the current edah
+                    $localErr = "";
+                    $dbc = new DbConn();
+                    $sql = "REPLACE INTO attendance_block_by_date (date, group_id, block_id, edah_group_id) VALUES ('$date', $groupId, $activeBlockId, $edahGroupId)";
+                    $result = $dbc->doQuery($sql, $localErr);
+                    if ($result == false) {
+                        echo dbErrorString($sql, $localErr);
+                        exit();
+                    }
                 }
             }
         }
@@ -146,13 +150,14 @@
         $sql = "SELECT c.camper_id, CONCAT(c.last, ', ', c.first) AS name, b.name AS bunk, a.present AS is_present FROM campers c " .
             "JOIN matches m ON c.camper_id = m.camper_id JOIN chug_instances i ON m.chug_instance_id = i.chug_instance_id " . 
             "JOIN chugim ch ON i.chug_id = ch.chug_id JOIN bunks b ON c.bunk_id = b.bunk_id " . 
-            "JOIN chug_groups g on ch.group_id = g.group_id ";
+            "JOIN edot_for_group g on ch.group_id = g.group_id AND c.edah_id = g.edah_id ";
         // include attendance record
         $sql .= "LEFT OUTER JOIN (SELECT * FROM attendance WHERE date = '" . $date . "') a ON c.camper_id = a.camper_id AND i.chug_instance_id = a.chug_instance_id ";
         // narrow it down by edah, chug, block, and only show "active" campers
         $sql .= "WHERE c.edah_id = " . $edahId . " AND c.inactive = 0 AND ch.chug_id = " . $chugId . " AND i.block_id = g.active_block_id ";
         // sort by bunk, then last name
-        $sql .= " ORDER BY bunk, name ";
+        $sql .= " ORDER BY bunk+0>0 DESC, bunk+0, LENGTH( bunk ), bunk, name ";
+
         $result = $dbc->doQuery($sql, $localErr);
         if ($result == false) {
             echo dbErrorString($sql, $localErr);
@@ -244,7 +249,7 @@ function validate_form_inputs()
     $errors = "";
 
     // declare scope of variables
-    global $edahIds, $rawEdahIds, $date, $groupId, $chugId;
+    global $edahIds, $rawEdahIds, $date, $groupId, $chugId, $edahGroupIds;
 
     // Step 1: edah ids
     foreach($rawEdahIds as $i => $id) {
@@ -272,6 +277,25 @@ function validate_form_inputs()
         $errors .= "<li>Improper edah id(s)</li>";
     }
 
+    // get edah_group_ids (store as dict edahId => edahGroupId)
+    $localErr = "";
+    $dbc = new DbConn();
+    $sql = "SELECT edah_id, edah_group_id FROM edot WHERE edah_id IN (";
+    foreach($edahIds as $id) {
+        $sql .= $id . ", ";
+    }
+    if (substr($sql, -2) == ", ") {
+        $sql = substr($sql, 0, -2);
+    }
+    $sql .= ")";
+    $result = $dbc->doQuery($sql, $localErr);
+    if ($result == false) {
+        echo dbErrorString($sql, $localErr);
+        exit();
+    }
+    while ($row = mysqli_fetch_array($result, MYSQLI_NUM)) {
+        $edahGroupIds[$row[0]] = $row[1]; // edahGroupIds[edahId] = edahGroupId
+    }
 
     // Step 2: date format
     $fullDate = strtotime($date);
@@ -283,13 +307,13 @@ function validate_form_inputs()
     // Step 3: group id, chug id valid
     $localErr = "";
     $dbc = new DbConn();
-    $sql = "SELECT g.group_id, c.chug_id FROM chug_groups g, chugim c WHERE g.group_id = " . intval($groupId) . " AND c.chug_id = " . intval($chugId) . " AND g.active_block_id IS NOT NULL";
+    $sql = "SELECT g.group_id, c.chug_id FROM edot_for_group g, chugim c WHERE g.group_id = " . intval($groupId) . " AND c.chug_id = " . intval($chugId) . " AND g.active_block_id IS NOT NULL";
     $result = $dbc->doQuery($sql, $localErr);
     if ($result == false) {
         echo dbErrorString($sql, $localErr);
         exit();
     }
-    if($result->num_rows != 1) {
+    if($result->num_rows < 1) {
         $errors .= "<li>Chug and/or perek not properly selected</li>";
     }
 

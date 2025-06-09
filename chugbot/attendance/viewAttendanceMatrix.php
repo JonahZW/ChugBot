@@ -76,7 +76,7 @@
         $date2BlockId = array();
         $localErr = "";
         $dbc = new DbConn();
-        $sql = "SELECT date, block_id FROM attendance_block_by_date WHERE group_id = $groupId AND date >= '$startDate' AND date <= '$endDate' ORDER BY date";
+        $sql = "SELECT a.date, a.block_id FROM attendance_block_by_date a JOIN edot e ON e.edah_group_id = a.edah_group_id WHERE e.edah_id = $edahId AND a.group_id = $groupId AND a.date >= '$startDate' AND a.date <= '$endDate' ORDER BY date";
         $result = $dbc->doQuery($sql, $localErr);
         if ($result == false) {
             echo dbErrorString($sql, $localErr);
@@ -115,7 +115,7 @@
         // only this edah and group_id
         $initialSql .= "WHERE ch.group_id = $groupId AND c.edah_id = $edahId ";
         // grouping, ordering
-        $initialSql .= "GROUP BY c.camper_id ORDER BY bunk, name";
+        $initialSql .= "GROUP BY c.camper_id ORDER BY bunk+0>0 DESC, bunk+0, LENGTH( bunk ), bunk, name";
 
         // determine if entire column is null
         $secondSql = "SELECT initial_result.`camper_id`, initial_result.`bunk`, initial_result.`name`,";

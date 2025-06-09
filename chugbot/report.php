@@ -646,6 +646,7 @@ $activeBlockIds = array();
 $activeChugIds = array();
 $activeSessionIds = array();
 $activeGroupIds = array();
+$shirtSize = null;
 $errors = array();
 $reportMethod = ReportTypes::None;
 $outputType = OutputTypes::Html;
@@ -656,6 +657,7 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
     $bunkId = test_get_input("bunk_id");
     $groupId = test_get_input("group_id");
     $blockId = test_get_input("block_id");
+    $shirtSize = test_get_input("t_shirt");
     $doReport = test_get_input("do_report");
     $archiveYear = test_get_input("archive_year");
     if (test_get_input("print")) {
@@ -680,6 +682,7 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
         $groupId = null;
         $blockId = null;
         $sessionId = null;
+        $shirtSize = null;
     }
 } else {
     // Check for a query string like ?edah=1&block=1.  Use that to deduce
@@ -896,6 +899,16 @@ if ($reportMethod == ReportTypes::ByEdah) {
     if ($outputType == OutputTypes::Html) {
         echo $chugChooser->renderHtml();
     }
+
+    // Add the ability to display t-shirt sizes
+    $tshirtSelect = new FormItemCheckBox("Display T-Shirt Sizes", false, "t_shirt", $liNumCounter++);
+    $tshirtSelect->setGuideText("<b>Step 4:</b> Optionally, choose to display camper t-shirt sizes.");
+    $tshirtSelect->setInputValue($shirtSize);
+
+    if ($outputType == OutputTypes::Html) {
+        echo $tshirtSelect->renderHtml();
+    }
+
 } else if ($reportMethod == ReportTypes::CamperChoices ||
     $reportMethod == ReportTypes::ChugimWithSpace ||
     $reportMethod == ReportTypes::RegisteredMissingPrefs ||
@@ -1161,7 +1174,12 @@ if ($doReport) {
         // for each edah that comes to the chug.  For each edah, the sheet should have:
         // - Rosh name and phone at the top, together with the edah name.
         // - List of campers in the edah: name and bunk.
-        $sql = "SELECT CONCAT(c.last, ', ', c.first) AS camper, e.name edah, e.sort_order edah_sort_order, " .
+        $sql = "SELECT CONCAT(c.last, ', ', c.first) AS camper, ";
+        if (test_get_input("t_shirt") == "on") {
+            // if meant to display t-shirt sizes, include term:
+            $sql .= "c.shirt_size as 'shirt size', ";
+        }
+        $sql .= "e.name edah, e.sort_order edah_sort_order, " .
             "e.rosh_name rosh, e.rosh_phone roshphone, ch.name chug_name, IFNULL(b.name, \"-\") bunk, bl.name block, " .
             "ch.chug_id chug_id, bl.block_id block_id, b.bunk_id bunk_id, e.edah_id edah_id, c.camper_id " .
             "FROM edot AS e " .
@@ -1196,7 +1214,12 @@ if ($doReport) {
         $chugReport->addCaptionReplaceColKey("BLOCK", "block", "no " . block_term_singular . " name");
         $chugReport->renderTable();
     } else if ($reportMethod == ReportTypes::ByChugRoshAndDepartment) {
-        $sql = "SELECT CONCAT(c.last, ', ', c.first) AS camper, e.name edah, e.sort_order edah_sort_order, " .
+        $sql = "SELECT CONCAT(c.last, ', ', c.first) AS camper, ";
+        if (test_get_input("t_shirt") == "on") {
+            // if meant to display t-shirt sizes, include term:
+            $sql .= "c.shirt_size as 'shirt size', ";
+        }
+        $sql .= "e.name edah, e.sort_order edah_sort_order, " .
             "ch.rosh_name rosh, ch.department_name department_name, ch.name chug_name, IFNULL(b.name, \"-\") bunk, bl.name block, " .
             "ch.chug_id chug_id, bl.block_id block_id, b.bunk_id bunk_id, e.edah_id edah_id, c.camper_id " .
             "FROM edot AS e " .

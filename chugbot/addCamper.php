@@ -15,6 +15,7 @@ $addCamperPage->addColumn("email2", false, false);
 $addCamperPage->addColumn("session_id", true, true);
 $addCamperPage->addColumn("edah_id", true, true);
 $addCamperPage->addColumn("bunk_id", false, true);
+$addCamperPage->addColumn("shirt_size", false, false);
 
 $addCamperPage->handleSubmit();
 
@@ -86,5 +87,13 @@ $bunkDropDown->setInputClass("element medium");
 $bunkDropDown->setParentIdAndName("edah_id", "Edah");
 $bunkDropDown->setColVal($bunkIdVal);
 $addCamperPage->addFormItem($bunkDropDown);
+
+$shirtDropDown = new FormItemDropDown("Shirt Size", false, "shirt_size", 7);
+$shirtDropDown->setGuideText("Choose your shirt size!");
+$shirtDropDown->setInputSingular("shirt Size");
+$shirtDropDown->setInputClass("element medium");
+$shirtSizes = array('YXS'=>'YXS', 'YS'=>'YS', 'YM'=>'YM', 'YL'=>'YL', 'YXL'=>'YXL', 'XS'=>'XS', 'S'=>'S', 'M'=>'M', 'L'=>'L', 'XL'=>'XL', '2XL'=>'2XL', '3XL'=>'3XL', '4XL'=>'4XL');
+$shirtDropDown->setId2Name($shirtSizes);
+$addCamperPage->addFormItem($shirtDropDown);
 
 $addCamperPage->renderForm();

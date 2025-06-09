@@ -45,11 +45,11 @@
         echo dbErrorString($sql, $localErr);
         exit();
     }
-    $activeBlockId = NULL;
+    $attendanceTaken = NULL;
     while ($row = mysqli_fetch_array($result, MYSQLI_NUM)) {
-        $activeBlockId = $row[0]; // only thing being returned
+        $attendanceTaken = $row[0]; // only thing being returned
     }
-    if(is_null($activeBlockId)) {
+    if(is_null($attendanceTaken)) {
         echo "<div class=\"col-md-6 offset-md-3\"><div class=\"alert alert-danger alert-dismissible fade show m-2\" role=\"alert\">" . 
         "<button type=\"button\" class=\"btn-close\" data-bs-dismiss=\"alert\" aria-label=\"Close\"></button><h5><strong>Error:</strong> " . 
         "No Attendance Records Exist</h5>No attendance has been taken yet for the provided day. Try again once someone has taken attendance.</div></div>";
@@ -79,6 +79,26 @@
 
     <?php 
     foreach($edahIds as $edahId) {
+        // Step 0: figure out block for this edah/date/group
+        $localErr = "";
+        $dbc = new DbConn();
+        $sql = "SELECT block_id FROM attendance_block_by_date a JOIN edot e ON a.edah_group_id = e.edah_group_id " . 
+            "WHERE e.edah_id = $edahId AND a.group_id = $groupId AND a.date = '$date'";
+        $result = $dbc->doQuery($sql, $localErr);
+        if ($result == false) {
+            echo dbErrorString($sql, $localErr);
+            exit();
+        }
+        $activeBlockId = NULL;
+        while ($row = mysqli_fetch_array($result, MYSQLI_NUM)) {
+            $activeBlockId = $row[0]; // only thing being returned
+        }
+        if(is_null($activeBlockId)) {
+            echo "<div class=\"card card-body bg-light mb-3 edah-attendance\"><h5 class=\"text-center\">" . ucfirst(edah_term_singular) . ": <span id=\"edah$edahId\">" . $edahId2Name[$edahId] . "</span></h5>" . 
+                "<h6>No $groupId2Name[$groupId] attendance has been taken yet for $edahId2Name[$edahId] on " . date("D F j, Y", strtotime($date)) . "; ask an administrator if you believe you are seeing this message in error.</h6></div>";
+            continue;
+        }
+
         // Step 1: SQL for all campers, chug assignments, and if they are present or not
         $localErr = "";
         $dbc = new DbConn();
@@ -181,8 +201,8 @@
         // if no campers had their attendance taken, show message saying that instead
         if($campersMissingAttendance == mysqli_num_rows($result)) {
             echo "<div class=\"card card-body bg-light mb-3 edah-attendance\"><h5 class=\"text-center\">" . ucfirst(edah_term_singular) . ": <span id=\"edah$edahId\">" . $edahId2Name[$edahId] . "</span></h5>" . 
-                "<h6>No $groupId2Name[$groupId] attendance has been taken yet for $edahId2Name[$edahId] on " . date("D F j, Y", strtotime($date)) . "; ask an administrator if you believe you are seeing this message in error.</h6>";
-            break;
+                "<h6>No $groupId2Name[$groupId] attendance has been taken yet for $edahId2Name[$edahId] on " . date("D F j, Y", strtotime($date)) . "; ask an administrator if you believe you are seeing this message in error.</h6></div>";
+            continue;
         }
 
         // if there is only one bunk for the edah, no need to include bunk info in table
@@ -272,13 +292,13 @@ function validate_form_inputs()
     // Step 3: group id valid
     $localErr = "";
     $dbc = new DbConn();
-    $sql = "SELECT g.group_id FROM chug_groups g WHERE g.group_id = " . intval($groupId) . " AND g.active_block_id IS NOT NULL";
+    $sql = "SELECT g.group_id FROM edot_for_group g WHERE g.group_id = " . intval($groupId) . " AND g.active_block_id IS NOT NULL";
     $result = $dbc->doQuery($sql, $localErr);
     if ($result == false) {
         echo dbErrorString($sql, $localErr);
         exit();
     }
-    if($result->num_rows != 1) {
+    if($result->num_rows < 1) {
         $errors .= "<li>Perek not properly selected</li>";
     }
 

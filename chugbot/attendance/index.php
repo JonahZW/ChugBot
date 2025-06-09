@@ -35,14 +35,18 @@ $blockId2Name = array();
 $groupId2Name = array();
 $edahId2Name = array();
 $chugId2Name = array();
+$edahGroupId2Name = array();
 $bunkId2Name = array();
-$group2ActiveBlock = array();
+$edahGroup2group2ActiveBlock = array();
+$edahId2edahGroupId = array();
+$edahGroupId2edahId = array();
 
 fillId2Name(null, $chugId2Name, $dbErr, "chug_id", "chugim", "group_id", "chug_groups");
 fillId2Name(null, $sessionId2Name, $dbErr, "session_id", "sessions");
 fillId2Name(null, $blockId2Name, $dbErr, "block_id", "blocks");
 fillId2Name(null, $groupId2Name, $dbErr, "group_id", "chug_groups");
 fillId2Name(null, $edahId2Name, $dbErr, "edah_id", "edot");
+fillId2Name(null, $edahGroupId2Name, $dbErr, "edah_group_id", "edah_groups");
 fillId2Name(null, $bunkId2Name, $dbErr, "bunk_id", "bunks");
 
 
@@ -50,46 +54,97 @@ setup_camp_specific_terminology_constants();
 
 echo headerText("Attendance Admin");
 
+
+// connect edah_ids to edah_group_ids
+$db = new dbConn();
+$db->addSelectColumn("edah_id");
+$db->addSelectColumn("edah_group_id");
+$result = $db->simpleSelectFromTable("edot", $err);
+while ($row = mysqli_fetch_array($result, MYSQLI_NUM)) {
+    // row[0] is edah_id, row[1] is edah_group_id
+    // if no edah group is assigned, set to -1
+    if (is_null($row[1])) {
+        $row[1] = -1;
+        $edahGroupId2Name[-1] = "Other " . ucfirst(edah_term_plural) . " (No " . edah_term_singular . " group assigned)"; // extra handler
+    }
+    $edahId2edahGroupId[$row[0]] = $row[1];
+    // and make sure there is an empty array for the group in $edahGroup2group2ActiveBlock
+    $edahGroup2group2ActiveBlock[$row[1]] = array();
+
+    // also connect edah group to edah
+    if (!isset($edahGroupId2edahId[$row[1]])) {
+        $edahGroupId2edahId[$row[1]] = array();
+    } 
+    array_push($edahGroupId2edahId[$row[1]], $row[0]);
+}
+
 // update saved attendance
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // determine what is being updated/set
     if(test_post_input("form") == "active-blocks") {
         $localErr = "";
         $dbc = new DbConn();
-        // list of applicable chug group ids
-        $groupIds = array_keys($groupId2Name);
+        // search for list of edah group/chug group pairings
+        $dbc->addSelectColumn("edah_id");
+        $dbc->addSelectColumn("group_id");
+        $result = $dbc->simpleSelectFromTable("edot_for_group", $localErr);
+        $edahGroupXchugGroups = array();
+        while ($row = mysqli_fetch_array($result, MYSQLI_NUM)) {
+            array_push($edahGroupXchugGroups, $row[0] . "_" . $row[1]);
+        }
 
-        // build SQL
+        // build SQL - update edot_for_group one edah group at a time
         $anySet = FALSE;
-        $sql = "UPDATE chug_groups SET active_block_id = ( CASE ";
-        foreach($groupIds as $id) {
-            $block = test_post_input($id);
+        $sql = "UPDATE edot_for_group SET active_block_id = ( CASE ";
+        $prevEdahGroup = NULL;
+        // loop through all edah group/chug group pairs
+        foreach($edahGroupXchugGroups as $idPair) {
+            $block = test_post_input($idPair);
             if (!empty($block)) {
-                $sql .= "WHEN (group_id = $id) THEN $block ";
+                $parts = explode("_", $idPair);
+                // if this is a different edah group than last iteration, update the table for those previous edot
+                if ($parts[0] != $prevEdahGroup && isset($prevEdahGroup)) {
+                    if ($anySet) {
+                        $sql .= "ELSE (NULL) END ) WHERE edah_id IN (" . implode(",",$edahGroupId2edahId[$prevEdahGroup]) . ")";
+                    } else {
+                        $sql = "UPDATE edot_for_group SET active_block_id = NULL WHERE edah_id IN (" . implode(",",$edahGroupId2edahId[$prevEdahGroup]);
+                    }
+                    // update table
+                    $db = new dbConn();
+                    $err = "";
+                    $result = $db->doQuery($sql, $err);
+                    if ($result == false) {
+                        echo dbErrorString($sql, $err);
+                        exit();
+                    }
+                    // reset sql
+                    $sql = "UPDATE edot_for_group SET active_block_id = ( CASE ";
+                }
+                $sql .= "WHEN (group_id = " . $parts[1] . ") THEN $block ";
                 $anySet = TRUE;
+                $prevEdahGroup = $parts[0];
             }
         }
-        $sql .= "ELSE (NULL) END )";
-        // if all are set to null, override built SQL and just clear column
-        if(!$anySet) {
-            $sql = "UPDATE chug_groups SET active_block_id = NULL";
-
+        if ($anySet) {
+            $sql .= "ELSE (NULL) END ) WHERE edah_id IN (" . implode(",",$edahGroupId2edahId[$prevEdahGroup]) . ")";
+        } else {
+            $sql = "UPDATE edot_for_group SET active_block_id = NULL WHERE edah_id IN (" . implode(",",$edahGroupId2edahId[$prevEdahGroup]);
         }
-        
-        // run query
-        $result = $dbc->doQuery($sql, $localErr);
+        // update table
+        $db = new dbConn();
+        $err = "";
+        $result = $db->doQuery($sql, $err);
         if ($result == false) {
-            echo dbErrorString($sql, $localErr);
+            echo dbErrorString($sql, $err);
             exit();
         }
-        else {
-            $successMessage = "<div class=\"col-md-6 offset-md-3\"><div class=\"alert alert-success alert-dismissible fade show m-2\" role=\"alert\">" . 
-            "<button type=\"button\" class=\"btn-close\" data-bs-dismiss=\"alert\" aria-label=\"Close\"></button><h5>Active " . ucfirst(block_term_plural) .
-            " Successfully Updated</h5>People taking and viewing attendance will now see the " . chug_term_singular . " for the newly set " . block_term_plural . "</div></div>";
-            echo $successMessage;
-    
-        }
         
+        // success!
+        $successMessage = "<div class=\"col-md-6 offset-md-3\"><div class=\"alert alert-success alert-dismissible fade show m-2\" role=\"alert\">" . 
+        "<button type=\"button\" class=\"btn-close\" data-bs-dismiss=\"alert\" aria-label=\"Close\"></button><h5>Active " . ucfirst(block_term_plural) .
+        " Successfully Updated</h5>People taking and viewing attendance will now see the " . chug_term_singular . " for the newly set " . block_term_plural . "</div></div>";
+        echo $successMessage;
+            
     }
     else if (test_post_input("form") == "purge") {
         // delete old records
@@ -131,19 +186,23 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 }
 
-// get current chug group - active block matches
+// get current edah group -> chug group -> active block matches
 $db = new dbConn();
+$err = "";
+$db->addSelectColumn("edah_id");
 $db->addSelectColumn("group_id");
 $db->addSelectColumn("active_block_id");
-$result = $db->simpleSelectFromTable("chug_groups", $err);
+$result = $db->simpleSelectFromTable("edot_for_group", $err);
 if ($result == false) {
     echo dbErrorString($sql, $localErr);
     exit();
 }
 while ($row = mysqli_fetch_array($result, MYSQLI_NUM)) {
-    // row[0] is chug group id, row[1] is active block id
-    // genPickList (used below) pre-selects options based on if the key (block id) maps to a value; pass in array corresponding to that group
-    $group2ActiveBlock[$row[0]] = array($row[1]=>$row[1]);
+    // row[0] is edah id, row[1] is group id, row[2] is active block id
+    // first will find the proper edah group
+    $edahGroup = $edahId2edahGroupId[$row[0]];
+    // then store the chug group and active block
+    $edahGroup2group2ActiveBlock[$edahGroup][$row[1]] = array($row[2]=>$row[2]);
 }
 
 ?>
@@ -158,24 +217,52 @@ while ($row = mysqli_fetch_array($result, MYSQLI_NUM)) {
     <form class="card card-body bg-light mb-3" id="assign_active_block_form" method="POST" action=""><ul>
         <h5>Assign Active <?php echo ucfirst(block_term_plural);?></h5>
         <p>Campers have different <?php echo chug_term_singular;?> assignments during different parts of the summer. To use the attendance system, 
-        administrators are responsible for assigning the current <?php echo block_term_singular;?> for each <?php echo chug_term_singular;?> perek. 
-        Use the dropdowns below to assign which <?php echo block_term_singular;?> is active. This determines which campers the <?php echo chug_term_singular;?> 
+        administrators are responsible for assigning the current <?php echo block_term_singular;?> for each <?php echo chug_term_singular;?> group.</p>
+        <p>If <?php echo edah_term_plural;?> have been assigned to multiple "<?php echo edah_term_singular;?> groups," those groups show below in an accordion, 
+        and dropdowns for each <?php echo chug_term_singular;?> group can be found within. If no "<?php echo edah_term_singular;?> groups" are set, the dropdowns display normally.</p>
+        <p>Use these dropdowns to assign which <?php echo block_term_singular;?> is active. This determines which campers the <?php echo chug_term_singular;?> 
         leaders will see when taking attendance, as well as the assignments a Rosh/Yoetzet will see when reviewing it.</p>
-        <p>Not selecting a <?php echo block_term_singular;?> (or setting it to <code>-- Choose <?php echo ucfirst(block_term_singular);?> --</code>) for a perek 
-        makes the <?php echo chug_term_singular;?> unavailable for taking/reviewing attendance.</p>
+        <p>Not selecting a <?php echo block_term_singular;?> (or setting it to <code>-- Choose <?php echo ucfirst(block_term_singular);?> --</code>) for a group 
+        makes the <?php echo chug_term_singular;?> group unavailable for taking/reviewing attendance.</p>
         <p>Leaving every <?php echo chug_term_singular;?> perek unset disables the attendance system for <?php echo chug_term_singular;?> leaders and Roshes/Yoetzot.</p>
         <?php 
-        // create a dropdown menu for each chug group to designate which block should be the active one
-        foreach($groupId2Name as $id => $group) {
-            $groupBlockStr  = "<li><label class=\"description\" for=\"group$id\">$group</label>";
-            $groupBlockStr .= "<div id=\"group{$id}_select\" class=\"pb-2\"><select class=\"form-select\" id=\"group$id\" name=\"$id\">";
-            $groupBlockStr .= genPickList($blockId2Name, $group2ActiveBlock[$id], block_term_singular);
-            $groupBlockStr .= "</select></div></li>";
-            echo $groupBlockStr;
-        }
+
+            // make an accordion for each edah group, then a dropdown within to make the actual assignments
+            // if only one edah group, do not make an accordion and leave flush
+            $isAccordion = sizeof($edahGroup2group2ActiveBlock) > 1;
+            $edahGroupHtml = "";
+
+            if ($isAccordion) {
+                $edahGroupAccordion = new bootstrapAccordion($name="edahGroups", $flush=false, $alwaysOpen=true);
+            }
+
+            // loop through all edah groups
+            foreach($edahGroupId2Name as $edahGroupId => $edahGroupName) {
+                $edahGroupStr = "";
+                foreach($groupId2Name as $groupId => $groupName) {
+                    // make sure this group is available for this edah group
+                    if (isset($edahGroup2group2ActiveBlock[$edahGroupId][$groupId])) {
+                        $edahGroupStr .= "<li><label class=\"description\" for=\"edah{$edahGroupId}_group{$groupId}\">$groupName</label>";
+                        $edahGroupStr .= "<div id=\"edah{$edahGroupId}_group{$groupId}_select\" class=\"pb-2\"><select class=\"form-select\" id=\"edah{$edahGroupId}_group{$groupId}\" name=\"{$edahGroupId}_{$groupId}\">";
+                        $edahGroupStr .= genPickList($blockId2Name, $edahGroup2group2ActiveBlock[$edahGroupId][$groupId], block_term_singular);
+                        $edahGroupStr .= "</select></div></li>";
+                    }
+                }
+
+                // add to accordion
+                if ($isAccordion) {
+                    if ($edahGroupStr != "") {
+                        $edahGroupAccordion->addAccordionElement($id="eg" . $edahGroupId, $title=$edahGroupName, $body=$edahGroupStr, $open=false);
+                    }
+                } else {
+                    $edahGroupHtml .= $edahGroupStr;
+                }
+            }
+            echo $isAccordion ? str_replace("\"accordion-button", "\"accordion-button bg-secondary text-white", $edahGroupAccordion->renderHtml()) : $edahGroupHtml;
+
         ?>
         <li>
-            <button class="btn btn-success" type="submit" id="submit_btn" name="form" value="active-blocks">Save Active <?php echo ucfirst(block_term_plural);?></button>
+            <button class="btn btn-success mt-3" type="submit" id="submit_btn" name="form" value="active-blocks">Save Active <?php echo ucfirst(block_term_plural);?></button>
         </li>
     </ul></form>
 
