@@ -585,10 +585,6 @@ div.zebra { position: relative; }
     background-color: #eee;
 }
 
-.zebra th:last-child, td:last-child {
-    border-right: 0;
-}
-
 .zebra tfoot th, tfoot td {
     border-bottom: 0;
     text-align: center;
@@ -634,20 +630,55 @@ select.options_toggle {
 
 }
 
-@media print {
-    .container.schedule {
-        page-break-after: always;
-        min-width: 7.5in;
-        min-height: 10in;
-        margin: 10px;
-    }
-    .container.instructions {
-        display: none;
-    }
-    .navbar.navbar-expand-lg {
-        display: none;
-    }
+@page {
+  size: auto; /* Let the browser decide size unless overridden */
+  margin: 0;  /* Avoid default margins */
 }
+
+@media print {
+  .container.print-hide,
+  .navbar.navbar-expand-lg {
+    display: none;
+  }
+  
+  .print-show {
+    display: block;
+    page-break-after: always;
+    break-after: page;
+    margin: 10px !important;
+    max-width: 100%;
+    max-height: 100%;
+  }
+
+  .container, .container-md {
+    max-width: none !important;
+    margin-left: 0px !important;
+    margin-right: 0px !important;
+    width: 100% !important;
+  }
+
+  a {
+    color: inherit !important;
+    text-decoration: none !important;
+  }
+}
+
+/* Landscape-specific */
+@media print and (orientation: landscape) {
+  .print-show {
+    min-width: 10.5in;
+    min-height: 7.5in;
+  }
+}
+
+/* Portrait-specific */
+@media print and (orientation: portrait) {
+  .print-show {
+    min-width: 7.5in;
+    min-height: 10.5in;
+  }
+}
+
 
 
 .accordion-button.collapsed {

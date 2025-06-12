@@ -111,7 +111,7 @@
     }
 ?>
 
-<div class="card card-body mt-3 container instructions">
+<div class="card card-body mt-3 container print-hide">
     <div class="card card-body bg-light">
         <div class="page-header"><h2>Print Custom Schedules</h2></div>
         <p>Below, find the custom schedules generated for each camper. To save them or print them, just print this 
@@ -135,7 +135,7 @@
 
     // Call the function to automatically generate a schedule for each camper based on the results of the SQL query
     while ($row = mysqli_fetch_array($result, MYSQLI_NUM)) {
-        $schedule  = "<div class=\"container schedule\">";
+        $schedule  = "<div class=\"container print-show schedule\">";
         $schedule .= $scheduleTemplate; // set basic template
 
         // Now, replace all keywords with the info from the camper's row

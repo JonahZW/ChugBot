@@ -6,7 +6,7 @@ bounceToLogin();
 checkLogout();
 setup_camp_specific_terminology_constants();
 
-// ensure camper importer is enabled
+// ensure chug importer is enabled
 $enableChugimImporter = check_enabled("enable_chugim_importer");
 if (!$enableChugimImporter) {
     $redirUrl = urlIfy("../staffHome.php?from=chugimUpload.php");
@@ -131,8 +131,8 @@ foreach ($parts as $part) {
 
 
 if ($dbErr) {
-    echo headerText("Camper Upload Error");
-    $tryAgainUrl = urlIfy("camperUpload.php");
+    echo headerText("Chug Upload Error");
+    $tryAgainUrl = urlIfy("chugUpload.php");
     $errText = genFatalErrorReport(array($dbErr), false,
         $tryAgainUrl);
     echo $errText;

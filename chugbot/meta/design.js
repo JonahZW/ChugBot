@@ -172,7 +172,7 @@ function loadSchedule() {
         type: 'post',
         data: values,
         success: function(data) {
-            result = data[sched_id];
+            result = data[0].name;
         },
         error: function(xhr, desc, err) {
         console.log(xhr);

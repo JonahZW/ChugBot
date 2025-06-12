@@ -315,7 +315,7 @@ class ZebraReport
         $pdfDataRow = array();
         $pdfCaptionText = "";
         $pdfColWidths = array();
-        $html = "";
+        $html = "<div class=\"card card-body container border-0\">";
         $newTableColumnValues = array();
         $rowIndex = 0;
         if ($this->outputType == OutputTypes::Csv) {
@@ -333,7 +333,7 @@ class ZebraReport
                 if (!empty($newTableColumnValues)) {
                     // If we have a changed new table value, close the div and
                     // previous table before starting a new one.
-                    $html .= "</div></table>";
+                    $html .= "</table></div>";
                     // Add the table we just built to the PDF.
                     $pdf->AddPage();
                     $pdf->setColWidths($pdfColWidths);
@@ -351,7 +351,7 @@ class ZebraReport
                         }
                     }
                 }
-                $html .= "<div ><table class=\"table table-bordered table-striped table-hover\">";
+                $html .= "<div class=\"print-show\"><table class=\"table table-bordered table-striped table-hover\">";
                 $pdfHeader = array();
                 $pdfData = array();
                 $pdfColWidths = array();
@@ -390,9 +390,9 @@ class ZebraReport
                         $captionText = str_replace($key, $replaceText, $captionText);
                         $pdfCaptionText = str_replace($key, $replaceText, $pdfCaptionText);
                     }
-                    $html .= "<hr><h4 style=\"text-align:center;\" class=\"mt-3\">$captionText</h4>";
+                    $html .= "<h4 style=\"text-align:center;\" class=\"mt-3\">$captionText</h4>";
                 }
-                $html .= "<thead><tr>";
+                $html .= "<thead>";
 
                 // Use the column keys as table headers.
                 $colKeys = array_keys($row);
@@ -423,6 +423,9 @@ class ZebraReport
                     // Initialize the width for the column corresponding to this
                     // header.
                     array_push($pdfColWidths, (strlen($tableHeader) * $this->mult) + $this->add);
+                }
+                if ($generateCheckboxes) {
+                    $html .= "<th scope=\"col\">";
                 }
                 $html .= "</tr></thead>";
 
@@ -488,7 +491,7 @@ class ZebraReport
             // to every row of every report (does by default)
             if($generateCheckboxes) {
                 $NUM_OF_CHECKBOXES = 10;
-                $html .= "<td style=\"font-size: 20px\">";
+                $html .= "<td style=\"font-size: 23px; padding: 0px\">";
                 foreach(range(1, $NUM_OF_CHECKBOXES) as $index) {
                     $html .= "&#9744;&nbsp;";
                 }
@@ -502,7 +505,7 @@ class ZebraReport
         $pdf->AddPage();
         $pdf->setColWidths($pdfColWidths);
         $pdf->GenTable($pdfCaptionText, $pdfHeader, $pdfData, $generateCheckboxes);
-        $html .= "</table></div>";
+        $html .= "</div></table></div>";
 
         if ($this->outputType == OutputTypes::Pdf) {
             $pdf->Output();
@@ -624,7 +627,7 @@ $reportMethodId2Name = array(
     ReportTypes::ByChugRoshAndDepartment => ucfirst(chug_term_singular) . " Leader (by department and rosh)",
     ReportTypes::Director => "Director (whole camp, sorted by edah)",
     ReportTypes::CamperChoices => "Camper Prefs and Assignment",
-    ReportTypes::AllRegisteredCampers => "All Campers Who Have Submitted Preferences",
+    ReportTypes::AllRegisteredCampers => "All Registered Campers",
     ReportTypes::ChugimWithSpace => ucfirst(chug_term_plural) . " With Free Space",
     ReportTypes::CamperHappiness => "Camper Happiness",
     ReportTypes::RegisteredMissingPrefs => "Campers Missing Preferences for Time " . ucfirst(block_term_plural),
@@ -786,7 +789,7 @@ $pageStart = <<<EOM
     });
 </script>
 
-<div class="card card-body mt-3 mb-3 container">
+<div class="card card-body mt-3 mb-3 container print-hide">
 
 <h1><a>$chug_term_singular Assignment Report</a></h1>
 <form id="main_form" method="GET" action="$actionTarget">
@@ -988,16 +991,18 @@ if ($outputType == OutputTypes::Html) {
 
     echo "<a class=\"btn btn-link\" href=\"$cancelUrl\">Home</a>";
     if ($doReport) {
-        echo "<br><br><input class=\"btn btn-light btn-outline-secondary me-3\" type=\"submit\" name=\"print\" title=\"Print this table\" value=\"Print...\" />";
-        echo "<input class=\"btn btn-light btn-outline-secondary\" type=\"submit\" name=\"export\" title=\"Export to a file\" value=\"Export\" />";
+        echo "<br><br><input class=\"btn btn-light btn-outline-dark me-3\" type=\"submit\" name=\"print\" title=\"Print this table\" value=\"Print...\" />";
+        echo "<button onClick=\"window.print()\" class=\"btn btn-outline-dark border-success me-3\" title=\"Improved print formatting (currently in testing)\">Improved Print (beta)</button>";
+        echo "<input class=\"btn btn-light btn-outline-dark\" type=\"submit\" name=\"export\" title=\"Export to a file\" value=\"Export\" />";
     }
     echo "</li></ul></form>";
 
     echo "<form id=\"reset_form\" method=\"GET\" action=\"$actionTarget\">";
     echo "<ul><li class=\"buttons\">";
-    echo "<input id=\"resetFormButton\" class=\"btn btn-light btn-outline-secondary mb-3\" type=\"submit\" name=\"reset\" value=\"Reset\" />";
-    echo "</li></ul></form>";
+    echo "<input id=\"resetFormButton\" class=\"btn btn-light btn-outline-dark mb-3\" type=\"submit\" name=\"reset\" value=\"Reset\" />";
+    echo "</li></ul></form></div>";
 }
+
 
 if ($doReport) {
     // Prepare and display the report, setting the SQL according to the report
