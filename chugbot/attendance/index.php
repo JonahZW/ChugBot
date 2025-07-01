@@ -82,16 +82,9 @@ while ($row = mysqli_fetch_array($result, MYSQLI_NUM)) {
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // determine what is being updated/set
     if(test_post_input("form") == "active-blocks") {
-        $localErr = "";
-        $dbc = new DbConn();
-        // search for list of edah group/chug group pairings
-        $dbc->addSelectColumn("edah_id");
-        $dbc->addSelectColumn("group_id");
-        $result = $dbc->simpleSelectFromTable("edot_for_group", $localErr);
-        $edahGroupXchugGroups = array();
-        while ($row = mysqli_fetch_array($result, MYSQLI_NUM)) {
-            array_push($edahGroupXchugGroups, $row[0] . "_" . $row[1]);
-        }
+        // get list of edah group x chug group pairs from POST data
+        $edahGroupXchugGroups = array_keys($_POST);
+        array_pop($edahGroupXchugGroups);
 
         // build SQL - update edot_for_group one edah group at a time
         $anySet = FALSE;

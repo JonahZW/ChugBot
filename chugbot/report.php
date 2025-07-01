@@ -329,6 +329,14 @@ class ZebraReport
             $output = fopen('php://output', 'w');
         }
         while ($row = $result->fetch_assoc()) {
+            // Filter out empty columns
+            $nonNullColumns = array();
+            foreach ($row as $colName => $value) {
+                if (!is_null($value)) {
+                    $nonNullColumns[$colName] = true;
+                }
+            }   
+
             if ($this->needToStartNewTable($newTableColumnValues, $row)) {
                 if (!empty($newTableColumnValues)) {
                     // If we have a changed new table value, close the div and
@@ -396,6 +404,11 @@ class ZebraReport
 
                 // Use the column keys as table headers.
                 $colKeys = array_keys($row);
+
+                // But only show the non-null columns
+                $colKeys = array_filter($colKeys, function($colName) use ($nonNullColumns) {
+                    return isset($nonNullColumns[$colName]);
+                });
 
                 // Count number of columns included
                 $numberOfColumns = 0;
@@ -1091,31 +1104,28 @@ if ($doReport) {
             // Now, build our actual query, using the group clause we just created.
             // The parentheses around the FROM tables ahead of the left join on preferences
             // are essential, because of a quirk in the way MySQL evaluates statements:
-            $sql = "SELECT CONCAT(c.last, ', ', c.first) name, c.camper_id camper_id, IFNULL(bu.name,\"-\") bunk, bu.bunk_id, " . 
+            $sql = "SELECT CONCAT(c.last, ', ', c.first) name, c.camper_id camper_id, c.bunk_id, IFNULL(bu.name,\"-\") bunk, " . 
             "e.name edah, e.edah_id, e.sort_order edah_sort_order, e.rosh_name rosh, e.rosh_phone roshphone, p.block_id block_id, b.name block";
             if ($groupClause) {
                  $sql .= ", " . $groupClause;
             }
-            $sql .= "FROM campers c, bunks bu, edot e, " .
-            "(SELECT " .
-            "m.camper_id camper_id, c.name chug_name, c.chug_id chug_id, g.name group_name, b.name block_name, b.block_id block_id " .
-            "FROM chug_groups g, blocks b, (matches m, chug_instances i, chugim c) " .
-            "LEFT OUTER JOIN preferences p " .
-            "ON p.group_id = c.group_id AND p.block_id = i.block_id AND m.camper_id = p.camper_id " .
-            "WHERE i.block_id = b.block_id " .
-            "AND c.chug_id = i.chug_id " .
-            "AND c.group_id = g.group_id " .
-            "AND m.chug_instance_id = i.chug_instance_id ";
-        addWhereClause($sql, $db, $activeBlockIds,
-            "i.block_id", true);
-        $sql .= ") p " .
+            $sql .= "FROM campers c " .
+                "JOIN edot e ON c.edah_id = e.edah_id " .
+                "LEFT JOIN bunks bu ON c.bunk_id = bu.bunk_id JOIN " .
+                    "(SELECT " .
+                    "m.camper_id camper_id, c.name chug_name, c.chug_id chug_id, g.name group_name, b.name block_name, b.block_id block_id " .
+                    "FROM chug_groups g, blocks b, (matches m, chug_instances i, chugim c) " .
+                    "WHERE i.block_id = b.block_id " .
+                    "AND c.chug_id = i.chug_id " .
+                    "AND c.group_id = g.group_id " .
+                    "AND m.chug_instance_id = i.chug_instance_id ";
+                    addWhereClause($sql, $db, $activeBlockIds, "i.block_id", true);
+                     $sql .= ") p ON c.camper_id = p.camper_id " .
                 "JOIN blocks AS b ON b.block_id = p.block_id ".
                 "WHERE c.camper_id = p.camper_id " . 
-                "AND c.edah_id = e.edah_id " .
-                "AND c.bunk_id = bu.bunk_id ";
-            addWhereClause($sql, $db, $activeEdahIds,
-                "c.edah_id", true);
-            $sql .= " GROUP BY camper_id, block_id ORDER BY edah_sort_order, edah, b.sort_order, name";
+                "AND c.edah_id = e.edah_id ";// .
+                addWhereClause($sql, $db, $activeEdahIds, "c.edah_id", true);
+            $sql .= " GROUP BY camper_id, block_id, bunk ORDER BY edah_sort_order, edah, b.sort_order, name";
         }
         $edahReport = new ZebraReport($db, $sql, $outputType);
         $edahReport->setReportTypeAndNameOfItem("Edah", $edahText);
@@ -1139,41 +1149,94 @@ if ($doReport) {
     } else if ($reportMethod == ReportTypes::ByBunk) {
         // Per-bunk report.  This the same as the per-edah report, except
         // organized by bunk.
-        $sql = "SELECT CONCAT(c.last, ', ', c.first) AS name, IFNULL(b.name,\"-\") bunk, bl.name block, e.name edah, e.sort_order edah_sort_order, " .
-            "g.name group_name, ch.name assignment, c.camper_id camper_id, b.bunk_id bunk_id, e.edah_id edah_id, g.group_id group_id, " .
-            "ch.chug_id chug_id, bl.block_id block_id " .
-            "FROM matches AS m " .
-            "JOIN chug_instances AS i ON m.chug_instance_id = i.chug_instance_id " .
-            "JOIN blocks AS bl ON i.block_id = bl.block_id " .
-            "JOIN chugim AS ch ON i.chug_id = ch.chug_id " .
-            "JOIN campers AS c ON c.camper_id = m.camper_id " .
-            "JOIN edot AS e ON c.edah_id = e.edah_id " .
-            "JOIN chug_groups AS g ON g.group_id = ch.group_id " .
-            "LEFT OUTER JOIN bunks b ON c.bunk_id = b.bunk_id ";
-        $haveWhere = addWhereClause($sql, $db, $activeBlockIds);
-        if ($bunkId) {
-            if (!$haveWhere) {
-                $sql .= "WHERE b.bunk_id = ? ";
-            } else {
-                $sql .= "AND b.bunk_id = ? ";
-            }
-            $db->addColVal($bunkId, 'i');
+        $localErr = "";
+        $dbc = new DbConn();
+        $sql = "SELECT DISTINCT g.name groupname, g.sort_order " .
+            "FROM chug_groups g, matches m, chug_instances i, chugim c, campers ca " .
+            "WHERE i.chug_instance_id = m.chug_instance_id " .
+            "AND i.chug_id = c.chug_id " .
+            "AND c.group_id = g.group_id " .
+            "AND m.camper_id = ca.camper_id ";
+        addWhereClause($sql, $dbc, $activeBlockIds,
+            "i.block_id", true);
+        addWhereClause($sql, $dbc, $activeEdahIds,
+            "ca.edah_id", true);
+        $sql .= "ORDER BY sort_order";
+        $result = $dbc->doQuery($sql, $localErr);
+        if ($result == false) {
+            echo dbErrorString($sql, $localErr);
+            exit();
         }
-        $sql .= "ORDER BY bunk+0>0 DESC, bunk+0, LENGTH(bunk), bunk, name, edah_sort_order, edah, g.sort_order";
+        if ($result->num_rows == 0) {
+            // If we did not find any preferences, report no rows.
+            $sql = "";
+        } else {
+            // If we have prefs and matches, we can build our main SQL.
+            // Otherwise, we'll use the SQL from above, which will report
+            // zero rows found.
+            $groupClause = "";
+            $i = 0;
+            $chugGroups = []; // Array which will hold every applicable chug group
+            while ($row = mysqli_fetch_array($result, MYSQLI_NUM)) {
+                $gn = $row[0];
+                array_push($chugGroups, $gn);
+                $groupClause .= " max(case when p.group_name = \"" . $gn . "\" then p.chug_name else null end)\"" . $gn . "\", " .
+                "max(case when p.group_name = \"" . $gn . "\" then p.chug_id else null end)\"" . $gn . " ID\"";
+                if ($i++ < ($result->num_rows - 1)) {
+                    $groupClause .= ", ";
+                }
+            }
+            // Now, build our actual query, using the group clause we just created.
+            // The parentheses around the FROM tables ahead of the left join on preferences
+            // are essential, because of a quirk in the way MySQL evaluates statements:
+            $sql = "SELECT CONCAT(c.last, ', ', c.first) name, c.camper_id camper_id, c.bunk_id, IFNULL(bu.name,\"-\") bunk, " . 
+            "p.block_id block_id, b.name block";
+            if ($groupClause) {
+                 $sql .= ", " . $groupClause;
+            }
+            $sql .= "FROM campers c " .
+                "JOIN edot e ON c.edah_id = e.edah_id " .
+                "LEFT JOIN bunks bu ON c.bunk_id = bu.bunk_id JOIN " .
+                    "(SELECT " .
+                    "m.camper_id camper_id, c.name chug_name, c.chug_id chug_id, g.name group_name, b.name block_name, b.block_id block_id " .
+                    "FROM chug_groups g, blocks b, (matches m, chug_instances i, chugim c) " .
+                    "WHERE i.block_id = b.block_id " .
+                    "AND c.chug_id = i.chug_id " .
+                    "AND c.group_id = g.group_id " .
+                    "AND m.chug_instance_id = i.chug_instance_id ";
+                    $haveWhere = addWhereClause($sql, $db, $activeBlockIds, "i.block_id", true);
+                     $sql .= ") p ON c.camper_id = p.camper_id " .
+                "JOIN blocks AS b ON b.block_id = p.block_id ".
+                "WHERE c.camper_id = p.camper_id " . 
+                "AND c.edah_id = e.edah_id ";
+                if ($bunkId) {
+                    if (!$haveWhere) {
+                        $sql .= "WHERE c.bunk_id = ? ";
+                    } else {
+                        $sql .= "AND c.bunk_id = ? ";
+                    }
+                    $db->addColVal($bunkId, 'i');
+                }
+            $sql .= "GROUP BY bunk, camper_id, block_id ORDER BY bunk+0>0 DESC, bunk+0, LENGTH(bunk), bunk, name";
+        }        
 
         // Create and display the report.
         $bunkReport = new ZebraReport($db, $sql, $outputType);
         $bunkReport->setReportTypeAndNameOfItem("Bunk", $bunkId2Name[$bunkId]);
         $bunkReport->addNewTableColumn("bunk");
-        $bunkReport->setCaption(ucfirst(chug_term_singular). " Assignments by Bunk for LINK0");
+        $bunkReport->setCaption(ucfirst(chug_term_singular). " Assignments for Bunk LINK0");
         $bunkReport->addIgnoreColumn("edah_sort_order");
         $bunkReport->setIdCol2EditPage("camper_id", "editCamper.php", "name");
         $bunkReport->setIdCol2EditPage("bunk_id", "editBunk.php", "bunk");
         $bunkReport->setIdCol2EditPage("edah_id", "editEdah.php", "edah");
         $bunkReport->setIdCol2EditPage("group_id", "editGroup.php", "group_name");
-        $bunkReport->setIdCol2EditPage("chug_id", "editChug.php", "assignment");
+        if(!empty($chugGroups)) {
+            foreach ($chugGroups as $groupName) {
+                $bunkReport->setIdCol2EditPage($groupName . " ID", "editChug.php", $groupName . " Assignment");
+            }
+        }
         $bunkReport->setIdCol2EditPage("block_id", "editBlock.php", "block");
-        $bunkReport->renderTable();
+        $bunkReport->renderTable(false);
     } else if ($reportMethod == ReportTypes::ByChug) {
         // The chug report is meant for chug leaders.  The leaders need a separate sheet
         // for each edah that comes to the chug.  For each edah, the sheet should have:
