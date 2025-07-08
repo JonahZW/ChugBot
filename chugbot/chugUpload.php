@@ -161,7 +161,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && !empty($_FILES["csv"]["tmp_name"])) 
     $dbErr = "";
     $sql = "SET information_schema_stats_expiry = 0";
     $result = $dbConn->doQuery($sql, $dbErr);
-    $sql = "SELECT `auto_increment` FROM INFORMATION_SCHEMA.TABLES WHERE table_name = 'chugim'";
+    $sql = "SELECT `auto_increment` FROM INFORMATION_SCHEMA.TABLES WHERE table_name = 'chugim' AND TABLE_SCHEMA = '" . MYSQL_DB . "'";
     $result = $dbConn->doQuery($sql, $dbErr);
     if ($result == false) {
         error_log($dbErr);
