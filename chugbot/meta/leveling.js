@@ -259,22 +259,12 @@ function displayChugimWithSpace(edah_ids, group_ids, block) {
 					if (chugMax == "0" || chugMax == 0 || chugMax == "10000" || chugMax == 10000 || 
 						chugMax === null || (typeof (chugMax) === 'undefined')) {
 						freeSpace = "unlimited";
+						freeHtml += name + ": " + freeSpace + " space<br>";
 					} else if ((!(chugId in chugId2FreeSpace)) && chugMax > curCount) {
 						freeSpace = chugMax - curCount;
+						var sp = (freeSpace == 1 || freeSpace == "unlimited") ? "space" : "spaces";
+						freeHtml += name + ": " + freeSpace + " " + sp + " left<br>";
 					}
-
-					// assembles the line in following format:
-					//  "CHUG NAME: x space(s) left"
-					var sp = "spaces";
-					var endTag = " left<br>";
-					if (freeSpace == 1) {
-						sp = "space";
-					} else if (freeSpace == "unlimited") {
-						sp = "space";
-						endTag = "<br>";
-					}
-					var sp = (freeSpace == 1 || freeSpace == "unlimited") ? "space" : "spaces";
-					freeHtml += name + ": " + freeSpace + " " + sp + endTag;
 
 				}
 				freeHtml += "</div></div></div>"

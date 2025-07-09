@@ -76,7 +76,8 @@
         $date2BlockId = array();
         $localErr = "";
         $dbc = new DbConn();
-        $sql = "SELECT a.date, a.block_id FROM attendance_block_by_date a JOIN edot e ON e.edah_group_id = a.edah_group_id WHERE e.edah_id = $edahId AND a.group_id = $groupId AND a.date >= '$startDate' AND a.date <= '$endDate' ORDER BY date";
+        $sql = "SELECT a.date, a.block_id FROM attendance_block_by_date a JOIN edot e ON ((a.edah_group_id = e.edah_group_id) OR (a.edah_group_id IS NULL AND e.edah_group_id IS NULL)) " .
+            "WHERE e.edah_id = $edahId AND a.group_id = $groupId AND a.date >= '$startDate' AND a.date <= '$endDate' ORDER BY date";
         $result = $dbc->doQuery($sql, $localErr);
         if ($result == false) {
             echo dbErrorString($sql, $localErr);
@@ -94,7 +95,7 @@
         $localErr = "";
         $db = new DbConn();
         // basic info
-        $initialSql = "SELECT c.camper_id, b.name as bunk, CONCAT(c.last, ', ', c.first) AS name, ";
+        $initialSql = "SELECT c.camper_id, IFNULL(b.name, \"-\") as bunk, CONCAT(c.last, ', ', c.first) AS name, ";
         foreach($date2BlockId as $dateBlockArr) {
             // attendance status for date
             $initialSql .= "MAX(CASE WHEN a.date = '$dateBlockArr[0]' AND a.camper_id = c.camper_id THEN a.present ELSE NULL END) AS \"$dateBlockArr[0]\",";
@@ -111,7 +112,7 @@
             "JOIN chug_instances ci ON ci.chug_instance_id = m.chug_instance_id " . 
             "JOIN attendance a ON a.camper_id = c.camper_id AND a.chug_instance_id = ci.chug_instance_id " . 
             "JOIN chugim ch ON ch.chug_id = ci.chug_id " . 
-            "JOIN bunks b on b.bunk_id = c.bunk_id ";
+            "LEFT JOIN bunks b on b.bunk_id = c.bunk_id ";
         // only this edah and group_id
         $initialSql .= "WHERE ch.group_id = $groupId AND c.edah_id = $edahId ";
         // grouping, ordering

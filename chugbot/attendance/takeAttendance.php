@@ -113,6 +113,9 @@
                 }
                 if($activeBlockId != NULL) {
                     $edahGroupId = $edahGroupIds[$edahId]; // looks up the edahGroupId for the current edah
+                    if (empty($edahGroupId)) {
+                        $edahGroupId = "NULL";
+                    }
                     $localErr = "";
                     $dbc = new DbConn();
                     $sql = "REPLACE INTO attendance_block_by_date (date, group_id, block_id, edah_group_id) VALUES ('$date', $groupId, $activeBlockId, $edahGroupId)";
@@ -147,9 +150,9 @@
         $localErr = "";
         $dbc = new DbConn();
         // this sql statement gets all matches, camper names, ids, and bunks
-        $sql = "SELECT c.camper_id, CONCAT(c.last, ', ', c.first) AS name, b.name AS bunk, a.present AS is_present FROM campers c " .
+        $sql = "SELECT c.camper_id, CONCAT(c.last, ', ', c.first) AS name, IFNULL(b.name, \"-\") AS bunk, a.present AS is_present FROM campers c " .
             "JOIN matches m ON c.camper_id = m.camper_id JOIN chug_instances i ON m.chug_instance_id = i.chug_instance_id " . 
-            "JOIN chugim ch ON i.chug_id = ch.chug_id JOIN bunks b ON c.bunk_id = b.bunk_id " . 
+            "JOIN chugim ch ON i.chug_id = ch.chug_id LEFT JOIN bunks b ON c.bunk_id = b.bunk_id " . 
             "JOIN edot_for_group g on ch.group_id = g.group_id AND c.edah_id = g.edah_id ";
         // include attendance record
         $sql .= "LEFT OUTER JOIN (SELECT * FROM attendance WHERE date = '" . $date . "') a ON c.camper_id = a.camper_id AND i.chug_instance_id = a.chug_instance_id ";

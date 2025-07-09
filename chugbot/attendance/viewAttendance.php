@@ -82,7 +82,7 @@
         // Step 0: figure out block for this edah/date/group
         $localErr = "";
         $dbc = new DbConn();
-        $sql = "SELECT block_id FROM attendance_block_by_date a JOIN edot e ON a.edah_group_id = e.edah_group_id " . 
+        $sql = "SELECT block_id FROM attendance_block_by_date a JOIN edot e ON ((a.edah_group_id = e.edah_group_id) OR (a.edah_group_id IS NULL AND e.edah_group_id IS NULL)) " . 
             "WHERE e.edah_id = $edahId AND a.group_id = $groupId AND a.date = '$date'";
         $result = $dbc->doQuery($sql, $localErr);
         if ($result == false) {
@@ -103,9 +103,9 @@
         $localErr = "";
         $dbc = new DbConn();
         // this sql statement gets all campers in the edah with their chug assignments
-        $sql = "SELECT c.camper_id, CONCAT(c.last, ', ', c.first) AS name, b.name AS bunk, ch.name AS chug, ch.department_name, ch.rosh_name, a.present is_present " .
+        $sql = "SELECT c.camper_id, CONCAT(c.last, ', ', c.first) AS name, IFNULL(b.name, \"-\") AS bunk, ch.name AS chug, ch.department_name, ch.rosh_name, a.present is_present " .
             "FROM campers c JOIN matches m ON c.camper_id = m.camper_id " .
-            "JOIN bunks b ON c.bunk_id = b.bunk_id " . 
+            "LEFT JOIN bunks b ON c.bunk_id = b.bunk_id " . 
             "JOIN chug_instances i ON m.chug_instance_id = i.chug_instance_id " . 
             "JOIN chugim ch on ch.chug_id = i.chug_id " . 
             "JOIN chug_groups g on ch.group_id = g.group_id ";
